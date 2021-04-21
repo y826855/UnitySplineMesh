@@ -24,9 +24,14 @@ public class LineNode : MonoBehaviour
 
     //방향과 사이즈
     public Vector3 _direction;
-    public Vector2 _sclae;
+    public Vector2 _scale;
 
-    public float roll;
+    public float _splineLength = 0;
+    public float _roll = 0;
+
+    public LineMesh _mesh = null;
+
+
 
     //위치 얻어오기
     public Vector3 GetSplinePoint(float t)
@@ -43,16 +48,22 @@ public class LineNode : MonoBehaviour
 
         float omt = 1.0f - t;
 
+        //B(t) = (1 - t)^3 * P0 + 3 * (1 - t)^2 * t *  P1 + 3 * (1 - t) * t^2 * P2 + t^3 * P3 
 
-        //P0(1 − t)^3 + 3 * P1* t(1 - t)^2 + 3 * P2 * t^2 * (1 - t) + P3*t^3
+        //p0 * (1 - t)^3  +  
+        //p1 * 3 * (1 - t)^2 * t  +  
+        //P2 * 3 * (1 - t) * t^2  +  
+        //P3 * t ^3
+
         return
-            P0 * Mathf.Pow(omt, 3)
-            + P1 * 3.0f * t * Mathf.Pow(omt, 2)
-            + P2 * 3.0f * t * (1.0f - t)
-            + P3 * Mathf.Pow(t, 3);
-
+            P0 * Mathf.Pow(omt, 3) +
+            P1 * Mathf.Pow(omt, 2) * 3 * t +
+            P2 * Mathf.Pow(t, 2) * 3 * omt +
+            P3 * Mathf.Pow(t, 3);
     }
 
+
+    
     //방향 얻어오기
     public Vector3 GetTangent(float t)
     {
@@ -65,70 +76,137 @@ public class LineNode : MonoBehaviour
         Vector3 P2 = _nextNode._tanBefore; 
         Vector3 P3 = _nextNode.transform.position;
 
+        //one minus t
         float omt = 1.0f - t;
 
+        //B'(t) = 3 * (1 - t)^2 * (P1 - P0) + 6 * (1 - t) * t * (P2 - P1) + 3 * t^2 * (P3 - P2). //위 식의 미분?
 
-        //-P0(1 - t)^2 + P1(3(1 - t)^2 - 2(1 - t)) + P2(-3t^2 + 2t) + P3t^2
-        return
-            (P0 * Mathf.Pow(omt, 2) * -1
-            + P1 * 3 * (Mathf.Pow(omt, 3) - (omt) * -2)
-            + P2 * (-3 * Mathf.Pow(t, 2) + 2 * t)
-            + P3 * (Mathf.Pow(t, 2))).normalized;
+        //3 * (1 - t) ^ 2 * (P1 - P0) + 
+        //6 * (1 - t) * t * (P2 - P1)+
+        //3 * t ^ 2 * (P3 - P2).
+        return(            
+            (P1 - P0) * 3 * Mathf.Pow(omt, 2) +
+            (P2 - P1) * 6 * omt * t +
+            (P3 - P2) * 3 * Mathf.Pow(t, 2)
+            ).normalized;
 
     }
+
+    //public 
 
     //생성
     public void Spawn(LineNode before = null)
     {
         //가중치 점 초기 위치 설정
-        _tanBefore = Vector3.forward * 0.3f;
-        _tanNext = -Vector3.forward * 0.3f;
+        ResetTangent();
 
         _beforeNode = before;
-        
-        
+       
     }
 
-    //B(t) = (1 - t)3 P0 + 3 (1 - t)2 t P1 + 3 (1 - t) t2 P2 + t3 P3 
-    //B'(t) = 3 (1 - t)2 (P1 - P0) + 6 (1 - t) t (P2 - P1) + 3 t2 (P3 - P2).
-
-    /*
-    private Vector3 GetTangent(float t)
+    public void ResetTangent()
     {
-        float omt = 1f - t;
-        float omt2 = omt * omt;
-        float t2 = t * t;
-        Vector3 tangent =
-            n1.Position * (-omt2) +
-            n1.Direction * (3 * omt2 - 2 * omt) +
-            GetInverseDirection() * (-3 * t2 + 2 * t) +
-            n2.Position * (t2);
-        return tangent.normalized;
-    }*/
+        _tanBefore = this.transform.position - Vector3.forward * 0.3f;
+        _tanNext   = this.transform.position + Vector3.forward * 0.3f;
+    }
 
-    public void Spawn(GameObject getP, LineNode before, Vector3 pos, ref List<LineNode> list)
+    public void Update()
     {
-        LineNode inst = Instantiate(Resources.Load("LineNode") as GameObject).GetComponent<LineNode>();
+        //_tanBefore = this.transform.position - Vector3.forward * 0.3f;
+        //_tanNext   = this.transform.position + Vector3.forward * 0.3f;
 
-        inst.transform.SetParent(getP.transform);
-        inst.transform.position = pos;
+        //MeshUpdate();
+    }
 
-        //inst._editor = this; //에디터 정보 주기
 
-        if (before == null)
+
+    //메쉬 업데이트 시키기
+    public void MeshUpdate()
+    {
+        MeshUpdateSelf();
+
+        //다음노드도 업데이트 하자
+        if (_nextNode != null)
+            _nextNode.MeshUpdateSelf();
+
+        //이전 노드도 업데이트 하자
+        if (_beforeNode != null)
+            _beforeNode.MeshUpdateSelf();
+
+    }
+
+    //자기자긴만 업데이트하기
+    public void MeshUpdateSelf()
+    {
+        if (_mesh != null)
         {
-            inst.Spawn();
-            Debug.Log("NO BEFORE");
+            _mesh.ChangeMesh();
+            //Debug.Log("MESH UPDATE");
         }
+        //Debug.Log("CALL MESH UPDATE");
+
+    }
+
+    //라인 길이 계산
+    public void CalcLength()
+    {
+        Vector3 beforeNode = this.transform.position;
+        float calcLength = 0;
+
+        for (int i = 1; i < 20; i++)
+        {
+            Vector3 nextNode = GetSplinePoint((float)i * 0.05f);
+            calcLength += Vector3.Distance(beforeNode, nextNode);
+            beforeNode = nextNode;
+        }
+
+        _splineLength = calcLength;
+        //Debug.Log(_splineLength);
+    }
+
+    ///////////////
+    //삭제 되었을때
+    private void OnDestroy()
+    {
+        //부모 배열에서 제거
+        if (_parent != null)
+            _parent._children.Remove(this);
         else
         {
-            before._nextNode = inst;
-            inst.Spawn(before);
-            Debug.Log("YES BEFORE");
+            //_children.Clear();
+            //if (_editor._lineNodes.Count != 0)
+            //    _editor._lineNodes.Remove(this);
         }
+        _children.Clear();
+        //_editor._points
 
-        //inst.m_parent = getP.GetComponent<LineNode>();
-
-        list.Add(inst);
+        //Debug.Log("delete");
     }
+
+    /*
+public void Spawn(GameObject getP, LineNode before, Vector3 pos, ref List<LineNode> list)
+{
+    LineNode inst = Instantiate(Resources.Load("LineNode") as GameObject).GetComponent<LineNode>();
+
+    inst.transform.SetParent(getP.transform);
+    inst.transform.position = pos;
+
+    //inst._editor = this; //에디터 정보 주기
+
+    if (before == null)
+    {
+        inst.Spawn();
+        Debug.Log("NO BEFORE");
+    }
+    else
+    {
+        before._nextNode = inst;
+        inst.Spawn(before);
+        Debug.Log("YES BEFORE");
+    }
+
+    inst._parent = getP.GetComponent<LineNode>();
+
+    list.Add(inst);
+}*/
 }
