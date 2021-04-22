@@ -205,10 +205,23 @@ public class LineMesh : MonoBehaviour
     //TODO : 처음과 끝을 어떻게 깔끔하게?
     public void CalcVerts(ref float X, ref float Y, ref float forward)
     {
-        //버텍스 조정
-        Vector3 vert = new Vector3(0, Y, -X);
-
         float Weight = GetFloatNormal(forward, _meshMinP, _meshMaxP);
+
+        //스케일 받아오기
+        Vector2 scale = _node.GetSplineScale(Weight);
+
+        //회전치 받아오기
+        Vector3 rotV = _node.GetTangent(Weight);
+
+        //z가 0 이하면 버택스가 뒤집히는 현상 있음
+        if (rotV.z < 0)
+            scale = -scale;
+        Quaternion rot = Quaternion.LookRotation(rotV);
+
+
+        //버텍스 조정
+        Vector3 vert = new Vector3(0, Y * scale.y, -X * scale.x);
+
         //가중치에 따른 스플라인 위치
         Vector3 splinePoint = _node.GetSplinePoint(Weight) - this.transform.position;
 
@@ -218,7 +231,6 @@ public class LineMesh : MonoBehaviour
         X = 0;
 
         //
-        Quaternion rot = Quaternion.LookRotation(_node.GetTangent(Weight)) ;
         Quaternion q = rot * Quaternion.Euler(0, -90, 0);
 
         //최종 버택스 위치

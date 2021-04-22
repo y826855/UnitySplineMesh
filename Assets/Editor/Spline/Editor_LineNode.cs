@@ -14,10 +14,15 @@ public class Editor_LineNode : Editor
     private List<LineNode> _selects = new List<LineNode>();
     private LineNode _selectionRoot = null;
 
+    //기본 라인메쉬
     public GameObject _defaultLineMesh = null;
 
+    //입력모드
     enum MouseInput { node, tanNext, tanBefore };
     MouseInput mode = MouseInput.node;
+
+    //스플라인 피벗 보이게?
+    bool _showSplinePivot = false;
 
     private void Awake()
     {
@@ -93,13 +98,36 @@ public class Editor_LineNode : Editor
             EditorGUILayout.LabelField("------------------------");
             EditorGUILayout.LabelField("Input Field");
 
-
-            EditorGUI.BeginChangeCheck();
-            bool check = EditorGUILayout.Toggle("IsRoot", _select._isRoot);
-            if (EditorGUI.EndChangeCheck())
+            //루트인가?
             {
-                EditorUtility.SetDirty(_select);
-                _select._isRoot = check;
+                EditorGUI.BeginChangeCheck();
+                bool check = EditorGUILayout.Toggle("IsRoot", _select._isRoot);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    EditorUtility.SetDirty(_select);
+                    _select._isRoot = check;
+                }
+            }
+            //피벗 보이게?
+            {
+                EditorGUI.BeginChangeCheck();
+                bool check = EditorGUILayout.Toggle("Show Spline Pivot", _select._isRoot);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _showSplinePivot = check;
+                }
+            }
+            //사이즈 입력
+            {
+                EditorGUI.BeginChangeCheck();
+                Vector2 check = EditorGUILayout.Vector2Field("Scale", _select._scale);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    foreach (var it in _selects)
+                    {
+                        it._scale = check;
+                    }
+                }
             }
 
             testInterval = EditorGUILayout.FloatField("interval", testInterval);
@@ -275,8 +303,11 @@ public class Editor_LineNode : Editor
 
         //Vector3 move = Vector3.zero;
 
+
+        //선택에 따른 모드
         switch (mode)
         {
+            //노드 입력
             case MouseInput.node:
                 {
                     EditorGUI.BeginChangeCheck();
@@ -291,6 +322,7 @@ public class Editor_LineNode : Editor
                 }
                 break;
 
+            //이전 노드방향 탄젠트
             case MouseInput.tanBefore:
                 {
                     EditorGUI.BeginChangeCheck();
@@ -307,6 +339,7 @@ public class Editor_LineNode : Editor
                 }
                 break;
 
+            //이후 노드방향 탄젠트
             case MouseInput.tanNext:
                 {
                     EditorGUI.BeginChangeCheck();
@@ -374,7 +407,7 @@ public class Editor_LineNode : Editor
         }
         
         Vector3 before = node.GetSplinePoint(0);
-        int verts = 10;
+        int verts = 3;
         for (int i = 0; i < verts; i++)
         {//Show Spline Weight
 
@@ -391,11 +424,23 @@ public class Editor_LineNode : Editor
             //rot.z = 0;
             Vector3 tt = Quaternion.LookRotation(rot) * Vector3.up * testInterval;
             //tt.z = 0;
+
+            //스플라인에 피벗 넣어 그리기
             //if (rot != Vector3.zero)
-            //    Handles.DoPositionHandle(pos + tt, Quaternion.LookRotation(rot) * Quaternion.Euler(0, -90, 0));
+            if (_showSplinePivot == true)
+            {
+                //Handles.DoPositionHandle(pos + tt, Quaternion.LookRotation(rot) * Quaternion.Euler(0, -90, 0));
                 //Handles.DoPositionHandle(Quaternion.LookRotation(rot) * pos, Quaternion.identity);
                 //Handles.DoPositionHandle(Quaternion.LookRotation(rot) * pos, Quaternion.identity);
-        }
+                Handles.DoPositionHandle(pos, Quaternion.LookRotation(rot));
+
+                //Debug.Log(rot);
+            }
+
+            
+        }//for verts
+        //_showSplinePivot = false;
+        
 
         //Show Tanget, 클릭에 따른 입력모드 전환
         Handles.color = Color.green;

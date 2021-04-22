@@ -24,7 +24,7 @@ public class LineNode : MonoBehaviour
 
     //방향과 사이즈
     public Vector3 _direction;
-    public Vector2 _scale;
+    public Vector2 _scale = new Vector2(1,1);
 
     public float _splineLength = 0;
     public float _roll = 0;
@@ -32,6 +32,14 @@ public class LineNode : MonoBehaviour
     public LineMesh _mesh = null;
 
 
+    public Vector2 GetSplineScale(float t)
+    {
+        if (_nextNode == null)
+            return Vector2.zero;
+
+
+        return Vector2.Lerp(_scale, _nextNode._scale, t);
+    }
 
     //위치 얻어오기
     public Vector3 GetSplinePoint(float t)
@@ -84,12 +92,42 @@ public class LineNode : MonoBehaviour
         //3 * (1 - t) ^ 2 * (P1 - P0) + 
         //6 * (1 - t) * t * (P2 - P1)+
         //3 * t ^ 2 * (P3 - P2).
-        return(            
+
+        Vector3 res = (
             (P1 - P0) * 3 * Mathf.Pow(omt, 2) +
             (P2 - P1) * 6 * omt * t +
             (P3 - P2) * 3 * Mathf.Pow(t, 2)
-            ).normalized;
+            );
 
+        //TODO : z가 0 밑으로 내려가면 강제 회전이 일어남.. 어떻게 해결할까?
+
+        if (res.z < 0)
+        {
+            //res = new Vector3(0, -1, -1).normalized;
+            //res = new Vector3(1, 0, 0).normalized;
+            //res = Quaternion.Euler(180, 0, 0) * res;
+            //res = Quaternion.Euler(0, 0, 0) * res;
+        }
+        //res.z = -res.z;// * -2;
+        //res = Quaternion.Euler(0, 0, 180) * res;
+
+        return res.normalized;
+
+        /*return
+            (
+            P0 * (-Mathf.Pow(omt, 2)) +
+            P1 * (3 * Mathf.Pow(omt, 2) - 2 * omt) +
+            P2 * (-3 * Mathf.Pow(t, 2) + 2 * t) +
+            P3 * Mathf.Pow(t, 2)
+            ).normalized;
+            */
+        /*
+                Vector3 tangent =
+                n1.Position * (-omt2) +
+                n1.Direction * (3 * omt2 - 2 * omt) +
+                GetInverseDirection() * (-3 * t2 + 2 * t) +
+                n2.Position * (t2);
+         */
     }
 
     //public 
