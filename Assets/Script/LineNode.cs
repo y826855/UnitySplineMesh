@@ -4,6 +4,12 @@ using UnityEngine;
 
 
 
+public class Tangent
+{
+    public Vector3 normal = Vector3.zero;
+    public bool upper = false;
+}
+
 [ExecuteInEditMode]
 public class LineNode : MonoBehaviour
 {
@@ -22,16 +28,18 @@ public class LineNode : MonoBehaviour
     public Vector3 _tanNext;
     public Vector3 _tanBefore;
 
+    public Quaternion _rot = Quaternion.identity;
+
     //방향과 사이즈
     public Vector3 _direction;
-    public Vector2 _scale = new Vector2(1,1);
+    public Vector2 _scale = Vector2.one;
 
     public float _splineLength = 0;
     public float _roll = 0;
 
     public LineMesh _mesh = null;
 
-
+    //스케일 얻어오기
     public Vector2 GetSplineScale(float t)
     {
         if (_nextNode == null)
@@ -71,18 +79,28 @@ public class LineNode : MonoBehaviour
     }
 
 
-    
+
     //방향 얻어오기
-    public Vector3 GetTangent(float t)
+    //public Vector3 GetTangent(float t)
+    public Tangent GetTangent(float t)
     {
+        Tangent result = new Tangent();
+
         if (_nextNode == null)
-            return Vector3.zero;
+            //return Vector3.zero;
+            return result;
 
 
         Vector3 P0 = this.transform.position;
         Vector3 P1 = _tanNext;
-        Vector3 P2 = _nextNode._tanBefore; 
+        Vector3 P2 = _nextNode._tanBefore;
         Vector3 P3 = _nextNode.transform.position;
+
+        //회전 때문에 x축 맞춰줌
+        P1.x = P0.x;
+        P2.x = P0.x;
+        P3.x = P0.x;
+
 
         //one minus t
         float omt = 1.0f - t;
@@ -101,17 +119,24 @@ public class LineNode : MonoBehaviour
 
         //TODO : z가 0 밑으로 내려가면 강제 회전이 일어남.. 어떻게 해결할까?
 
-        if (res.z < 0)
-        {
-            //res = new Vector3(0, -1, -1).normalized;
-            //res = new Vector3(1, 0, 0).normalized;
-            //res = Quaternion.Euler(180, 0, 0) * res;
-            //res = Quaternion.Euler(0, 0, 0) * res;
-        }
-        //res.z = -res.z;// * -2;
-        //res = Quaternion.Euler(0, 0, 180) * res;
+        Quaternion testRot = Quaternion.LookRotation(res);
+        Vector3 euler = testRot.eulerAngles;
 
-        return res.normalized;
+        if (res.z > 0)
+        {
+            euler = new Vector3(euler.x, euler.y, euler.z);
+            res = Quaternion.Euler(euler) * Vector3.forward;
+            result.upper = true;
+        }
+
+
+        //TODO : 비틀리는 부분 z축이 어떤지 한번 알아보자
+
+        result.normal = res.normalized;
+        //result.normal.z = -result.normal.z;
+
+        //return res.normalized;
+        return result;
 
         /*return
             (
@@ -130,7 +155,12 @@ public class LineNode : MonoBehaviour
          */
     }
 
-    //public 
+    public void SetRot()
+    {
+        if (_nextNode == null) return;
+        _rot = Quaternion.LookRotation(GetTangent(0.0f).normal);
+        Debug.Log("reset rot");
+    }
 
     //생성
     public void Spawn(LineNode before = null)
@@ -139,13 +169,18 @@ public class LineNode : MonoBehaviour
         ResetTangent();
 
         _beforeNode = before;
-       
+
+
+        before._rot = Quaternion.LookRotation(before.GetTangent(0.0f).normal);
     }
 
     public void ResetTangent()
     {
         _tanBefore = this.transform.position - Vector3.forward * 0.3f;
         _tanNext   = this.transform.position + Vector3.forward * 0.3f;
+
+        _rot = Quaternion.identity;
+        //SetRot();
     }
 
     public void Update()

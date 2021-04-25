@@ -210,12 +210,22 @@ public class LineMesh : MonoBehaviour
         //스케일 받아오기
         Vector2 scale = _node.GetSplineScale(Weight);
 
+        Tangent res = _node.GetTangent(Weight);
+
         //회전치 받아오기
-        Vector3 rotV = _node.GetTangent(Weight);
+        //Vector3 rotV = _node.GetTangent(Weight);
+        Vector3 rotV = res.normal;
 
         //z가 0 이하면 버택스가 뒤집히는 현상 있음
-        if (rotV.z < 0)
-            scale = -scale;
+        //if (rotV.z < 0)
+        //    scale = -scale;
+
+        if (res.upper == true)
+        {
+            scale.y = -scale.y;
+            scale.x = -scale.x;
+        }
+
         Quaternion rot = Quaternion.LookRotation(rotV);
 
 

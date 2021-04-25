@@ -22,7 +22,7 @@ public class Editor_LineNode : Editor
     MouseInput mode = MouseInput.node;
 
     //스플라인 피벗 보이게?
-    bool _showSplinePivot = false;
+    bool _showSplinePivot = true;
 
     private void Awake()
     {
@@ -81,7 +81,19 @@ public class Editor_LineNode : Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_beforeNode"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_parent"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("_children"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("_mesh"));
+            //EditorGUILayout.PropertyField(serializedObject.FindProperty("_rot"));
 
+            EditorGUILayout.Vector3Field("Rot", _select._rot.eulerAngles);
+            EditorGUILayout.Vector3Field("Rot0", Quaternion.LookRotation(_select.GetTangent(0).normal).eulerAngles);
+            for (int i=1; i < 10; i++)
+            {
+                //EditorGUILayout.Vector3Field("Rot", _select._rot.eulerAngles);
+                EditorGUILayout.Vector3Field("Rot" + i, Quaternion.LookRotation(_select.GetTangent(1f / (float)i).normal).eulerAngles);
+            }
+
+
+            //메쉬 강제 업데이트
             if (GUILayout.Button("DEBUG UPDATE MESH"))
             {
                 _selectionRoot.MeshUpdateSelf();
@@ -111,7 +123,7 @@ public class Editor_LineNode : Editor
             //피벗 보이게?
             {
                 EditorGUI.BeginChangeCheck();
-                bool check = EditorGUILayout.Toggle("Show Spline Pivot", _select._isRoot);
+                bool check = EditorGUILayout.Toggle("Show Spline Pivot", _showSplinePivot);
                 if (EditorGUI.EndChangeCheck())
                 {
                     _showSplinePivot = check;
@@ -333,7 +345,8 @@ public class Editor_LineNode : Editor
                         //_select._tanNext = move * 2 - _select._tanNext;
                         _select._tanNext = (_select.transform.position - move) + _select.transform.position;
                         _select._tanBefore = move;
-                        
+
+                        _select.SetRot();
                     }
                     Undo.RecordObject(_select, "move vert");
                 }
@@ -353,6 +366,8 @@ public class Editor_LineNode : Editor
                         //_select._tanBefore = (move - _select.transform.position) + _select.transform.position;
                         _select._tanBefore = (_select.transform.position - move) + _select.transform.position;
                         _select._tanNext = move;
+
+                        _select.SetRot();
                     }
                     Undo.RecordObject(_select, "move vert");
                 }
@@ -407,7 +422,7 @@ public class Editor_LineNode : Editor
         }
         
         Vector3 before = node.GetSplinePoint(0);
-        int verts = 3;
+        int verts = 10;
         for (int i = 0; i < verts; i++)
         {//Show Spline Weight
 
@@ -420,7 +435,7 @@ public class Editor_LineNode : Editor
             Handles.DrawLine(before, pos);
             before = pos;
 
-            Vector3 rot = node.GetTangent(t);
+            Vector3 rot = node.GetTangent(t).normal;
             //rot.z = 0;
             Vector3 tt = Quaternion.LookRotation(rot) * Vector3.up * testInterval;
             //tt.z = 0;
